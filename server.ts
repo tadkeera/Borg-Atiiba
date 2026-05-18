@@ -139,6 +139,56 @@ async function startServer() {
     }
   });
 
+  // ========== DOCTORS MANAGMENT (Bypassing RLS) ==========
+  app.get("/api/admin/doctors", async (req, res, next) => {
+    try {
+      const { data, error } = await supabase.from('doctors').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      res.json(data);
+    } catch(e) { next(e); }
+  });
+
+  app.post("/api/admin/doctors", requireAdmin, async (req, res, next) => {
+    try {
+      if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+         return res.status(500).json({ error: "مفتاح SUPABASE_SERVICE_ROLE_KEY غير موجود في إعدادات البيئة (Environment Variables)." });
+      }
+      const { name, speciality, allow_second_week, limit_to_two_patients } = req.body;
+      const { data, error } = await supabase.from('doctors').insert({
+         name, speciality, allow_second_week, limit_to_two_patients
+      }).select().single();
+      if (error) throw error;
+      res.json({ success: true, doctor: data });
+    } catch (e: any) { next(e); }
+  });
+
+  app.put("/api/admin/doctors/:id", requireAdmin, async (req, res, next) => {
+    try {
+       if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+         return res.status(500).json({ error: "مفتاح SUPABASE_SERVICE_ROLE_KEY غير موجود في إعدادات البيئة (Environment Variables)." });
+      }
+      const { id } = req.params;
+      const { name, speciality, allow_second_week, limit_to_two_patients } = req.body;
+      const { error } = await supabase.from('doctors').update({
+         name, speciality, allow_second_week, limit_to_two_patients
+      }).eq('id', id);
+      if (error) throw error;
+      res.json({ success: true });
+    } catch (e: any) { next(e); }
+  });
+
+  app.delete("/api/admin/doctors/:id", requireAdmin, async (req, res, next) => {
+    try {
+       if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+         return res.status(500).json({ error: "مفتاح SUPABASE_SERVICE_ROLE_KEY غير موجود في إعدادات البيئة (Environment Variables)." });
+      }
+      const { id } = req.params;
+      const { error } = await supabase.from('doctors').delete().eq('id', id);
+      if (error) throw error;
+      res.json({ success: true });
+    } catch(e: any) { next(e); }
+  });
+
   // ========== WHATSAPP WEBHOOK ROUTE ==========
   // Verify token
   app.get("/api/webhook/whatsapp", (req, res) => {

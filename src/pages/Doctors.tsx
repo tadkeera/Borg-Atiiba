@@ -36,31 +36,34 @@ export default function Doctors() {
 
     let resError = null;
 
-    if (formData.id) {
-      const { error } = await supabase.from('doctors').update({
-        name: formData.name,
-        speciality: formData.speciality,
-        allow_second_week: formData.allow_second_week,
-        limit_to_two_patients: formData.limit_to_two_patients
-      }).eq('id', formData.id);
-      resError = error;
-    } else {
-      const { error } = await supabase.from('doctors').insert({
-        name: formData.name,
-        speciality: formData.speciality,
-        allow_second_week: formData.allow_second_week,
-        limit_to_two_patients: formData.limit_to_two_patients
-      });
-      resError = error;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      
+      if (formData.id) {
+         const res = await fetch(`/api/admin/doctors/${formData.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(formData)
+         });
+         const data = await res.json();
+         if (!res.ok) throw new Error(data.error || 'حدث خطأ أثناء الحفظ');
+      } else {
+         const res = await fetch(`/api/admin/doctors`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(formData)
+         });
+         const data = await res.json();
+         if (!res.ok) throw new Error(data.error || 'حدث خطأ أثناء الحفظ');
+      }
+    } catch(e: any) {
+       resError = e;
     }
     
     if (resError) {
       console.error(resError);
-      if (resError.message?.includes('schema cache') || resError.message?.includes('does not exist')) {
-          showToast('error', 'جدول الأطباء غير موجود في قاعدة البيانات، يرجى تنفيذ ملف SQL (supabase-schema.sql) في Supabase لإضافة الجداول.');
-      } else {
-          showToast('error', resError.message || 'حدث خطأ أثناء الحفظ');
-      }
+      showToast('error', resError.message || 'حدث خطأ أثناء الحفظ');
     } else {
       showToast('success', 'تم الحفظ بنجاح');
       setIsModalOpen(false);
@@ -71,8 +74,18 @@ export default function Doctors() {
   const handleDelete = async (id: string) => {
     if (!isAdmin) return;
     if (confirm('هل أنت متأكد من حذف حساب الطبيب؟ سيتم حذف جميع الجداول والحجوزات المرتبطة به.')) {
-      await supabase.from('doctors').delete().eq('id', id);
-      fetchDoctors();
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        const res = await fetch(`/api/admin/doctors/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('حدث خطأ أثناء الحذف');
+        fetchDoctors();
+      } catch(e: any) {
+        showToast('error', e.message);
+      }
     }
   };
 

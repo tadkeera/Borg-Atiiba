@@ -36,7 +36,9 @@ DROP POLICY IF EXISTS "Public read access for doctors" ON public.doctors;
 CREATE POLICY "Public read access for doctors" ON public.doctors FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Admin write access for doctors" ON public.doctors;
 CREATE POLICY "Admin write access for doctors" ON public.doctors FOR ALL USING (
-    (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
+    auth.role() = 'authenticated'
+) WITH CHECK (
+    auth.role() = 'authenticated'
 );
 
 -- 3. schedules table
