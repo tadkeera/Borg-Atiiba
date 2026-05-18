@@ -5,7 +5,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 1. profiles table (extends auth.users)
-CREATE TABLE public.profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     username TEXT NOT NULL,
     role TEXT NOT NULL CHECK (role IN ('admin', 'receptionist')),
@@ -19,7 +19,7 @@ CREATE POLICY "Users can insert their own profile." ON public.profiles FOR INSER
 CREATE POLICY "Users can update own profile." ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
 -- 2. doctors table
-CREATE TABLE public.doctors (
+CREATE TABLE IF NOT EXISTS public.doctors (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL,
     speciality TEXT,
@@ -36,7 +36,7 @@ CREATE POLICY "Admin write access for doctors" ON public.doctors FOR ALL USING (
 
 -- 3. schedules table
 -- Day of week integer: Saturday = 6, Sunday = 0, Monday = 1, Tuesday = 2, Wednesday = 3, Thursday = 4
-CREATE TABLE public.schedules (
+CREATE TABLE IF NOT EXISTS public.schedules (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     doctor_id UUID REFERENCES public.doctors(id) ON DELETE CASCADE,
     day_of_week INTEGER NOT NULL CHECK (day_of_week IN (0, 1, 2, 3, 4, 6)), 
@@ -47,7 +47,7 @@ CREATE TABLE public.schedules (
 );
 
 -- 4. bookings table
-CREATE TABLE public.bookings (
+CREATE TABLE IF NOT EXISTS public.bookings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     doctor_id UUID REFERENCES public.doctors(id) ON DELETE CASCADE,
     schedule_id UUID REFERENCES public.schedules(id) ON DELETE CASCADE,
@@ -63,7 +63,7 @@ CREATE TABLE public.bookings (
 );
 
 -- 5. settings table
-CREATE TABLE public.settings (
+CREATE TABLE IF NOT EXISTS public.settings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     whatsapp_api_token TEXT,
     whatsapp_phone_number_id TEXT,
@@ -74,7 +74,7 @@ CREATE TABLE public.settings (
 INSERT INTO public.settings (id) VALUES (uuid_generate_v4());
 
 -- 6. bot_sessions table for state machine tracking
-CREATE TABLE public.bot_sessions (
+CREATE TABLE IF NOT EXISTS public.bot_sessions (
     phone_number TEXT PRIMARY KEY,
     state TEXT NOT NULL DEFAULT 'INIT',
     context JSONB DEFAULT '{}'::jsonb,
