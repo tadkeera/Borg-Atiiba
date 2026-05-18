@@ -14,8 +14,11 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 
 -- Enable RLS for profiles (optional but good practice)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone." ON public.profiles;
 CREATE POLICY "Public profiles are viewable by everyone." ON public.profiles FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Users can insert their own profile." ON public.profiles;
 CREATE POLICY "Users can insert their own profile." ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+DROP POLICY IF EXISTS "Users can update own profile." ON public.profiles;
 CREATE POLICY "Users can update own profile." ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
 -- 2. doctors table
@@ -29,7 +32,9 @@ CREATE TABLE IF NOT EXISTS public.doctors (
 );
 
 ALTER TABLE public.doctors ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public read access for doctors" ON public.doctors;
 CREATE POLICY "Public read access for doctors" ON public.doctors FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Admin write access for doctors" ON public.doctors;
 CREATE POLICY "Admin write access for doctors" ON public.doctors FOR ALL USING (
     (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
 );
@@ -71,7 +76,9 @@ CREATE TABLE IF NOT EXISTS public.settings (
 );
 
 -- Default settings row
-INSERT INTO public.settings (id) VALUES (uuid_generate_v4());
+INSERT INTO public.settings (id)
+SELECT uuid_generate_v4()
+WHERE NOT EXISTS (SELECT 1 FROM public.settings);
 
 -- 6. bot_sessions table for state machine tracking
 CREATE TABLE IF NOT EXISTS public.bot_sessions (
